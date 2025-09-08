@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useAdventure } from "@state/adventure";
 
 export function AdventureHUD() {
@@ -6,6 +6,7 @@ export function AdventureHUD() {
   const [position, setPosition] = useState({ x: 12, y: 12 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -19,20 +20,22 @@ export function AdventureHUD() {
     }
   };
 
-  const handleMouseMove = (e: MouseEvent) => {
-    if (isDragging) {
-      setPosition({
-        x: e.clientX - dragOffset.x,
-        y: e.clientY - dragOffset.y,
-      });
-    }
-  };
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (isDragging) {
+        setPosition({
+          x: e.clientX - dragOffset.x,
+          y: e.clientY - dragOffset.y,
+        });
+      }
+    },
+    [isDragging, dragOffset]
+  );
 
-  const handleMouseUp = () => {
+  const handleMouseUp = useCallback(() => {
     setIsDragging(false);
-  };
+  }, []);
 
-  // Add global mouse event listeners when dragging
   useEffect(() => {
     if (isDragging) {
       document.addEventListener("mousemove", handleMouseMove);
@@ -42,7 +45,24 @@ export function AdventureHUD() {
         document.removeEventListener("mouseup", handleMouseUp);
       };
     }
-  }, [isDragging, dragOffset]);
+  }, [isDragging, handleMouseMove, handleMouseUp]);
+
+  const handleEndTurn = () => {
+    if (hero.movementPoints > 0) {
+      setShowConfirmDialog(true);
+    } else {
+      endTurn();
+    }
+  };
+
+  const confirmEndTurn = () => {
+    endTurn();
+    setShowConfirmDialog(false);
+  };
+
+  const cancelEndTurn = () => {
+    setShowConfirmDialog(false);
+  };
 
   return (
     <div
@@ -84,25 +104,91 @@ export function AdventureHUD() {
       </div>
 
       <button
-        onClick={endTurn}
-        disabled={hero.movementPoints === hero.maxMovementPoints}
+        onClick={handleEndTurn}
         style={{
           padding: "8px 16px",
-          backgroundColor:
-            hero.movementPoints === hero.maxMovementPoints ? "#666" : "#4a9eff",
+          backgroundColor: "#4a9eff",
           color: "#fff",
           border: "none",
           borderRadius: 4,
-          cursor:
-            hero.movementPoints === hero.maxMovementPoints
-              ? "not-allowed"
-              : "pointer",
+          cursor: "pointer",
           fontSize: 14,
           fontWeight: "bold",
         }}
       >
         End Turn
       </button>
+
+      {showConfirmDialog && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "rgba(0,0,0,0.9)",
+              color: "#fff",
+              padding: "20px",
+              borderRadius: "8px",
+              border: "1px solid rgba(255,255,255,0.2)",
+              minWidth: "300px",
+              textAlign: "center",
+            }}
+          >
+            <h3 style={{ margin: "0 0 16px 0", fontSize: "16px" }}>
+              End Turn Confirmation
+            </h3>
+            <p style={{ margin: "0 0 20px 0", fontSize: "14px" }}>
+              One or more of your heroes still has movement points. Are you sure
+              you want to end your turn?
+            </p>
+            <div
+              style={{ display: "flex", gap: "12px", justifyContent: "center" }}
+            >
+              <button
+                onClick={confirmEndTurn}
+                style={{
+                  padding: "8px 16px",
+                  backgroundColor: "#4a9eff",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  fontWeight: "bold",
+                }}
+              >
+                Yes, End Turn
+              </button>
+              <button
+                onClick={cancelEndTurn}
+                style={{
+                  padding: "8px 16px",
+                  backgroundColor: "#666",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  fontWeight: "bold",
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
