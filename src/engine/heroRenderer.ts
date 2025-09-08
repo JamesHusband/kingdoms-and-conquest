@@ -31,6 +31,12 @@ export function createHeroSprite(hero: Hero, tileSize: number): Container {
   return container;
 }
 
+export function updateHeroPosition(heroSprite: Container, hero: Hero): void {
+  heroSprite.x = hero.x;
+  heroSprite.y = hero.y;
+  (heroSprite as HeroContainer).heroData = hero;
+}
+
 export function updateHeroSelection(
   heroSprite: Container,
   isSelected: boolean

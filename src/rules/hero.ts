@@ -18,8 +18,8 @@ export function createHero(
     name,
     x,
     y,
-    movementPoints: 20,
-    maxMovementPoints: 20,
+    movementPoints: 5,
+    maxMovementPoints: 5,
   };
 }
 
@@ -28,4 +28,27 @@ export function resetHeroMovement(hero: Hero): Hero {
     ...hero,
     movementPoints: hero.maxMovementPoints,
   };
+}
+
+export function moveHero(
+  hero: Hero,
+  targetX: number,
+  targetY: number,
+  tileSize: number
+): Hero {
+  const deltaX = Math.abs(targetX - hero.x);
+  const deltaY = Math.abs(targetY - hero.y);
+  const movementCost =
+    Math.round(deltaX / tileSize) + Math.round(deltaY / tileSize);
+
+  if (movementCost <= hero.movementPoints) {
+    return {
+      ...hero,
+      x: targetX,
+      y: targetY,
+      movementPoints: hero.movementPoints - movementCost,
+    };
+  }
+
+  return hero;
 }

@@ -1,5 +1,6 @@
 import { Application, Container, Graphics, Text, TextStyle } from "pixi.js";
 import { createHeroSprite, updateHeroSelection } from "@engine/heroRenderer";
+import { createPathPreview } from "@engine/pathRenderer";
 import { useAdventure } from "@state/adventure";
 
 function gridToWorld(gridX: number, gridY: number, tileSize: number) {
@@ -62,12 +63,21 @@ function createHero(
   const centerWorld = gridToWorld(centerX, centerY, tileSize);
   heroSprite.x = centerWorld.x;
   heroSprite.y = centerWorld.y;
+
+  const { hero: currentHero } = useAdventure.getState();
+  if (currentHero.x !== centerWorld.x || currentHero.y !== centerWorld.y) {
+    useAdventure.setState({
+      hero: { ...currentHero, x: centerWorld.x, y: centerWorld.y },
+    });
+  }
+
   return heroSprite;
 }
 
 function setupClickHandling(
   root: Container,
   heroSprite: Container,
+  pathContainer: Container,
   tileSize: number
 ): void {
   root.interactive = true;
@@ -75,12 +85,40 @@ function setupClickHandling(
     const { selectHero } = useAdventure.getState();
     const localPos = event.data.getLocalPosition(root);
 
+    const targetX = Math.floor(localPos.x / tileSize) * tileSize + tileSize / 2;
+    const targetY = Math.floor(localPos.y / tileSize) * tileSize + tileSize / 2;
+
     const heroDistance = Math.sqrt(
       (localPos.x - heroSprite.x) ** 2 + (localPos.y - heroSprite.y) ** 2
     );
+
     if (heroDistance < tileSize * 0.5) {
       selectHero(useAdventure.getState().hero);
       updateHeroSelection(heroSprite, true);
+      pathContainer.removeChildren();
+      return;
+    }
+
+    const { selectedHero } = useAdventure.getState();
+    if (selectedHero) {
+      pathContainer.removeChildren();
+
+      const heroGridX = Math.floor(selectedHero.x / tileSize);
+      const heroGridY = Math.floor(selectedHero.y / tileSize);
+      const targetGridX = Math.floor(targetX / tileSize);
+      const targetGridY = Math.floor(targetY / tileSize);
+      const deltaX = Math.abs(targetGridX - heroGridX);
+      const deltaY = Math.abs(targetGridY - heroGridY);
+      const cost = Math.max(deltaX, deltaY);
+
+      const pathSprite = createPathPreview(
+        selectedHero,
+        targetX,
+        targetY,
+        tileSize,
+        selectedHero.movementPoints
+      );
+      pathContainer.addChild(pathSprite);
     }
   });
 }
@@ -95,12 +133,15 @@ export function createAdventureScene(app: Application, opts = { tile: 32 }) {
 
   createGridLabels(cols, rows, opts.tile, root);
 
+  const pathContainer = new Container();
+  root.addChild(pathContainer);
+
   const centerX = Math.floor(cols / 2);
   const centerY = Math.floor(rows / 2);
   const heroSprite = createHero(centerX, centerY, opts.tile);
   root.addChild(heroSprite);
 
-  setupClickHandling(root, heroSprite, opts.tile);
+  setupClickHandling(root, heroSprite, pathContainer, opts.tile);
 
-  return { root, tileSize: opts.tile, heroSprite };
+  return { root, tileSize: opts.tile, heroSprite, pathContainer };
 }
