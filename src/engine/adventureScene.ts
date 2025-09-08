@@ -1,118 +1,106 @@
-import { Application, Container, Graphics } from "pixi.js";
-import {
-  createHeroSprite,
-  updateHeroPosition,
-  updateHeroSelection,
-} from "@engine/heroRenderer";
-import { createPathPreview } from "@engine/pathRenderer";
+import { Application, Container, Graphics, Text, TextStyle } from "pixi.js";
+import { createHeroSprite, updateHeroSelection } from "@engine/heroRenderer";
 import { useAdventure } from "@state/adventure";
 
-export function createAdventureScene(app: Application, opts = { tile: 32 }) {
-  const root = new Container();
+function gridToWorld(gridX: number, gridY: number, tileSize: number) {
+  return {
+    x: gridX * tileSize + tileSize / 2,
+    y: gridY * tileSize + tileSize / 2,
+  };
+}
 
-  // Calculate cols and rows based on app.screen dimensions to fill the entire screen
-  const cols = Math.ceil(app.screen.width / opts.tile);
-  const rows = Math.ceil(app.screen.height / opts.tile);
-
-  // simple generated checkerboard map
-  const g = new Graphics();
+function createGridBackground(
+  cols: number,
+  rows: number,
+  tileSize: number
+): Graphics {
+  const tiles = new Graphics();
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < cols; x++) {
       const shade = (x + y) % 2 === 0 ? 0x2b2b2b : 0x333333;
-      g.rect(x * opts.tile, y * opts.tile, opts.tile, opts.tile).fill(shade);
+      tiles.rect(x * tileSize, y * tileSize, tileSize, tileSize).fill(shade);
     }
   }
-  root.addChild(g);
+  return tiles;
+}
 
-  // Add hero
-  const { hero } = useAdventure.getState();
-  const heroSprite = createHeroSprite(hero, opts.tile);
-  root.addChild(heroSprite);
-
-  // Path preview container
-  const pathContainer = new Container();
-  root.addChild(pathContainer);
-
-  // Track click state for second click execution
-  let hasPathPreview = false;
-
-  // Make the root interactive for click handling
-  root.interactive = true;
-  root.on("pointerdown", (event) => {
-    const {
-      selectedHero,
-      selectHero,
-      previewPath,
-      executeMovement,
-      clearPathPreview,
-    } = useAdventure.getState();
-    const localPos = event.data.getLocalPosition(root);
-
-    // Snap to tile grid
-    const targetX =
-      Math.floor(localPos.x / opts.tile) * opts.tile + opts.tile / 2;
-    const targetY =
-      Math.floor(localPos.y / opts.tile) * opts.tile + opts.tile / 2;
-
-    // Check if clicking on hero
-    const heroDistance = Math.sqrt(
-      (localPos.x - hero.x) ** 2 + (localPos.y - hero.y) ** 2
-    );
-    if (heroDistance < opts.tile * 0.5) {
-      // Clicked on hero - select it
-      selectHero(hero);
-      updateHeroSelection(heroSprite, true);
-      clearPathPreview();
-      pathContainer.removeChildren();
-      hasPathPreview = false;
-      return;
-    }
-
-    if (selectedHero) {
-      const { pathPreview } = useAdventure.getState();
-
-      console.log("Click state:", {
-        hasPathPreview,
-        pathPreview: !!pathPreview,
-        targetX,
-        targetY,
-      });
-
-      if (pathPreview && hasPathPreview) {
-        // Second click - execute movement (click anywhere to execute)
-        console.log("Executing movement...");
-        executeMovement(opts.tile);
-
-        // Get the updated hero from state after movement
-        const { hero: updatedHero } = useAdventure.getState();
-        console.log("Updated hero position:", updatedHero.x, updatedHero.y);
-        updateHeroPosition(heroSprite, updatedHero);
-        updateHeroSelection(heroSprite, true); // Keep selection highlight
-
-        // Keep path preview for remaining movement
-        pathContainer.removeChildren();
-        const { pathPreview: remainingPath } = useAdventure.getState();
-        if (remainingPath) {
-          const pathSprite = createPathPreview(remainingPath, opts.tile);
-          pathContainer.addChild(pathSprite);
-        }
-        hasPathPreview = remainingPath !== null;
-      } else {
-        // First click - show path preview
-        console.log("Showing path preview...");
-        previewPath(targetX, targetY, opts.tile);
-
-        // Update path preview display
-        pathContainer.removeChildren();
-        const { pathPreview: newPathPreview } = useAdventure.getState();
-        if (newPathPreview) {
-          const pathSprite = createPathPreview(newPathPreview, opts.tile);
-          pathContainer.addChild(pathSprite);
-        }
-        hasPathPreview = newPathPreview !== null;
-      }
-    }
+function createGridLabels(
+  cols: number,
+  rows: number,
+  tileSize: number,
+  root: Container
+): void {
+  const labelStyle = new TextStyle({
+    fontFamily: "Arial, sans-serif",
+    fontSize: 12,
+    fill: 0xffffff,
+    stroke: { width: 1, color: 0x000000 },
   });
 
-  return { root, tileSize: opts.tile, heroSprite, pathContainer };
+  for (let x = 0; x < Math.min(cols, 52); x++) {
+    const label = new Text({ text: x.toString(), style: labelStyle });
+    label.x = x * tileSize + tileSize / 2 - 6;
+    label.y = 2;
+    root.addChild(label);
+  }
+
+  for (let y = 0; y < Math.min(rows, 50); y++) {
+    const label = new Text({ text: y.toString(), style: labelStyle });
+    label.x = 2;
+    label.y = y * tileSize + tileSize / 2 - 6;
+    root.addChild(label);
+  }
+}
+
+function createHero(
+  centerX: number,
+  centerY: number,
+  tileSize: number
+): Container {
+  const { hero } = useAdventure.getState();
+  const heroSprite = createHeroSprite(hero, tileSize);
+  const centerWorld = gridToWorld(centerX, centerY, tileSize);
+  heroSprite.x = centerWorld.x;
+  heroSprite.y = centerWorld.y;
+  return heroSprite;
+}
+
+function setupClickHandling(
+  root: Container,
+  heroSprite: Container,
+  tileSize: number
+): void {
+  root.interactive = true;
+  root.on("pointerdown", (event) => {
+    const { selectHero } = useAdventure.getState();
+    const localPos = event.data.getLocalPosition(root);
+
+    const heroDistance = Math.sqrt(
+      (localPos.x - heroSprite.x) ** 2 + (localPos.y - heroSprite.y) ** 2
+    );
+    if (heroDistance < tileSize * 0.5) {
+      selectHero(useAdventure.getState().hero);
+      updateHeroSelection(heroSprite, true);
+    }
+  });
+}
+
+export function createAdventureScene(app: Application, opts = { tile: 32 }) {
+  const root = new Container();
+  const cols = Math.ceil(app.screen.width / opts.tile);
+  const rows = Math.ceil(app.screen.height / opts.tile);
+
+  const gridBackground = createGridBackground(cols, rows, opts.tile);
+  root.addChild(gridBackground);
+
+  createGridLabels(cols, rows, opts.tile, root);
+
+  const centerX = Math.floor(cols / 2);
+  const centerY = Math.floor(rows / 2);
+  const heroSprite = createHero(centerX, centerY, opts.tile);
+  root.addChild(heroSprite);
+
+  setupClickHandling(root, heroSprite, opts.tile);
+
+  return { root, tileSize: opts.tile, heroSprite };
 }

@@ -18,30 +18,9 @@ export function createHero(
     name,
     x,
     y,
-    movementPoints: 5,
-    maxMovementPoints: 5,
+    movementPoints: 20,
+    maxMovementPoints: 20,
   };
-}
-
-export function moveHero(
-  hero: Hero,
-  targetX: number,
-  targetY: number,
-  tileSize: number
-): Hero {
-  const distance = Math.abs(targetX - hero.x) + Math.abs(targetY - hero.y);
-  const movementCost = Math.ceil(distance / tileSize);
-
-  if (movementCost <= hero.movementPoints) {
-    return {
-      ...hero,
-      x: targetX,
-      y: targetY,
-      movementPoints: hero.movementPoints - movementCost,
-    };
-  }
-
-  return hero; // Can't move, return unchanged
 }
 
 export function resetHeroMovement(hero: Hero): Hero {
@@ -49,15 +28,4 @@ export function resetHeroMovement(hero: Hero): Hero {
     ...hero,
     movementPoints: hero.maxMovementPoints,
   };
-}
-
-export function canHeroMove(
-  hero: Hero,
-  targetX: number,
-  targetY: number,
-  tileSize: number
-): boolean {
-  const distance = Math.abs(targetX - hero.x) + Math.abs(targetY - hero.y);
-  const movementCost = Math.ceil(distance / tileSize);
-  return movementCost <= hero.movementPoints;
 }
