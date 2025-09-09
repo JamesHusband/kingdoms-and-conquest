@@ -90,22 +90,18 @@ function refreshPathDisplay(
   const { selectedHero, currentPath, currentTarget } = useAdventure.getState();
 
   if (!selectedHero || !currentPath || !currentTarget) {
-    // Clear any existing path display when there's no current path
     pathContainer.removeChildren();
     return;
   }
 
-  // Double-check that the path still exists (it might have been cleared between the check and now)
   const currentState = useAdventure.getState();
   if (!currentState.currentPath || !currentState.currentTarget) {
     pathContainer.removeChildren();
     return;
   }
 
-  // Clear existing path display
   pathContainer.removeChildren();
 
-  // Create updated path preview from current position
   const pathSprite = createPathPreviewFromCurrentPosition(
     selectedHero,
     currentPath,
@@ -129,7 +125,22 @@ function continuePathMovement(
   const { selectedHero, currentPath, moveHeroAlongPath } =
     useAdventure.getState();
 
+  if (selectedHero) {
+    heroSprite.x = selectedHero.x;
+    heroSprite.y = selectedHero.y;
+  }
+
   if (!selectedHero || !currentPath) {
+    pathContainer.removeChildren();
+    return;
+  }
+
+  if (selectedHero.movementPoints === 0) {
+    if (currentPath && currentPath.length > 0) {
+      refreshPathDisplay(heroSprite, pathContainer, tileSize);
+    } else {
+      pathContainer.removeChildren();
+    }
     return;
   }
 
@@ -154,16 +165,7 @@ function continuePathMovement(
     useAdventure.getState();
 
   if (updatedHero) {
-    console.log(
-      "About to update hero position from",
-      selectedHero.x,
-      selectedHero.y,
-      "to",
-      updatedHero.x,
-      updatedHero.y
-    );
     updateHeroPosition(heroSprite, updatedHero);
-    console.log("Hero position updated, checking if path needs updating");
 
     if (newPath) {
       pathContainer.removeChildren();
@@ -177,14 +179,8 @@ function continuePathMovement(
       );
       pathContainer.addChild(pathSprite);
     } else {
-      // Path completed - clear the path display and don't create any new path preview
       pathContainer.removeChildren();
-      console.log("Path completed, hero should be at final destination");
-      console.log("Final hero position:", updatedHero.x, updatedHero.y);
-      return; // Exit early to prevent any further processing
     }
-  } else {
-    console.log("No updatedHero found");
   }
 }
 
@@ -263,7 +259,6 @@ export function createAdventureScene(app: Application, opts = { tile: 32 }) {
 
   setupClickHandling(root, heroSprite, pathContainer, opts.tile);
 
-  // Set up path refresh callback
   useAdventure.setState({
     refreshPathDisplay: (callback?: () => void) => {
       if (callback) {

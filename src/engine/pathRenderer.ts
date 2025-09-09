@@ -112,7 +112,25 @@ export function createPathPreviewFromCurrentPosition(
     }
   }
 
-  if (heroIndex === -1 || heroIndex >= path.length - 1) {
+  if (heroIndex === -1) {
+    let closestIndex = 0;
+    let closestDistance = Math.sqrt(
+      Math.pow(path[0].x - hero.x, 2) + Math.pow(path[0].y - hero.y, 2)
+    );
+
+    for (let i = 1; i < path.length; i++) {
+      const distance = Math.sqrt(
+        Math.pow(path[i].x - hero.x, 2) + Math.pow(path[i].y - hero.y, 2)
+      );
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestIndex = i;
+      }
+    }
+    heroIndex = closestIndex;
+  }
+
+  if (heroIndex >= path.length - 1) {
     return container;
   }
 
@@ -293,7 +311,6 @@ function createXMarker(
       event.stopPropagation();
       onClick();
     });
-  } else {
   }
 
   return graphics;
