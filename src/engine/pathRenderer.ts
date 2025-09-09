@@ -1,4 +1,10 @@
-import { Graphics, Container, Text, TextStyle } from "pixi.js";
+import {
+  Graphics,
+  Container,
+  Text,
+  TextStyle,
+  FederatedPointerEvent,
+} from "pixi.js";
 import { findPath } from "@rules/pathfinding";
 import type { Hero } from "@rules/hero";
 
@@ -7,7 +13,8 @@ export function createPathPreview(
   targetX: number,
   targetY: number,
   tileSize: number,
-  currentMovementPoints: number = 5
+  currentMovementPoints: number = 5,
+  onPathConfirm?: () => void
 ): Container {
   const container = new Container();
 
@@ -74,6 +81,11 @@ export function createPathPreview(
 
   container.addChild(label);
 
+  // Add clickable X marker at the end of the path
+  const xMarker = createXMarker(endPoint, tileSize, onPathConfirm);
+  console.log("Creating X marker at:", endPoint, "tileSize:", tileSize);
+  container.addChild(xMarker);
+
   return container;
 }
 
@@ -121,6 +133,72 @@ function createDirectionalArrow(
   graphics.lineTo(tipX, tipY);
 
   graphics.endFill();
+
+  return graphics;
+}
+
+function createXMarker(
+  position: { x: number; y: number },
+  tileSize: number,
+  onClick?: () => void
+): Graphics {
+  const graphics = new Graphics();
+
+  const markerSize = tileSize * 0.6;
+  const lineWidth = 6;
+  t;
+  graphics.beginFill(0xffffff, 0.9);
+  graphics.lineStyle(3, 0x000000, 1);
+  graphics.drawCircle(position.x, position.y, markerSize * 0.8);
+  graphics.endFill();
+
+  graphics.lineStyle(lineWidth, 0xff0000, 1);
+
+  const halfSize = markerSize * 0.5;
+  graphics.moveTo(position.x - halfSize, position.y - halfSize);
+  graphics.lineTo(position.x + halfSize, position.y + halfSize);
+  graphics.moveTo(position.x + halfSize, position.y - halfSize);
+  graphics.lineTo(position.x - halfSize, position.y + halfSize);
+
+  graphics.interactive = true;
+  graphics.cursor = "pointer";
+
+  graphics.on("pointerover", () => {
+    graphics.clear();
+
+    graphics.beginFill(0xffff00, 0.9);
+    graphics.lineStyle(4, 0x000000, 1);
+    graphics.drawCircle(position.x, position.y, markerSize * 0.8);
+    graphics.endFill();
+
+    graphics.lineStyle(lineWidth + 2, 0xff0000, 1);
+    graphics.moveTo(position.x - halfSize, position.y - halfSize);
+    graphics.lineTo(position.x + halfSize, position.y + halfSize);
+    graphics.moveTo(position.x + halfSize, position.y - halfSize);
+    graphics.lineTo(position.x - halfSize, position.y + halfSize);
+  });
+
+  graphics.on("pointerout", () => {
+    graphics.clear();
+
+    graphics.beginFill(0xffffff, 0.9);
+    graphics.lineStyle(3, 0x000000, 1);
+    graphics.drawCircle(position.x, position.y, markerSize * 0.8);
+    graphics.endFill();
+
+    graphics.lineStyle(lineWidth, 0xff0000, 1);
+    graphics.moveTo(position.x - halfSize, position.y - halfSize);
+    graphics.lineTo(position.x + halfSize, position.y + halfSize);
+    graphics.moveTo(position.x + halfSize, position.y - halfSize);
+    graphics.lineTo(position.x - halfSize, position.y + halfSize);
+  });
+
+  if (onClick) {
+    graphics.on("pointerdown", (event: FederatedPointerEvent) => {
+      event.stopPropagation();
+      onClick();
+    });
+  }
 
   return graphics;
 }

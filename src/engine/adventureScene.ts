@@ -109,14 +109,16 @@ function setupClickHandling(
       const targetGridY = Math.floor(targetY / tileSize);
       const deltaX = Math.abs(targetGridX - heroGridX);
       const deltaY = Math.abs(targetGridY - heroGridY);
-      const cost = Math.max(deltaX, deltaY);
 
       const pathSprite = createPathPreview(
         selectedHero,
         targetX,
         targetY,
         tileSize,
-        selectedHero.movementPoints
+        selectedHero.movementPoints,
+        () => {
+          console.log("Path confirmed! Moving hero to:", targetX, targetY);
+        }
       );
       pathContainer.addChild(pathSprite);
     }
