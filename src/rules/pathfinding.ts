@@ -38,6 +38,7 @@ export function findPath(
   console.log("findPath: world path", worldPath);
   console.log("findPath: first point", worldPath[0]);
   console.log("findPath: last point", worldPath[worldPath.length - 1]);
+  console.log("findPath: path length", worldPath.length);
 
   return worldPath;
 }

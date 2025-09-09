@@ -20,7 +20,7 @@ export function createPathPreview(
 
   const path = findPath(hero, targetX, targetY, tileSize);
 
-  if (path.length < 2) {
+  if (path.length < 1) {
     return container;
   }
 
@@ -45,6 +45,8 @@ export function createPathPreview(
         x: current.x - prev.x,
         y: current.y - prev.y,
       };
+    } else if (path.length === 1) {
+      direction = { x: 1, y: 0 };
     }
 
     const arrowGraphics = createDirectionalArrow(
@@ -81,7 +83,6 @@ export function createPathPreview(
 
   container.addChild(label);
 
-  // Add clickable X marker at the end of the path
   const xMarker = createXMarker(endPoint, tileSize, onPathConfirm);
   container.addChild(xMarker);
 
@@ -102,7 +103,6 @@ export function createPathPreviewFromCurrentPosition(
     return container;
   }
 
-  // Find the hero's current position in the path
   let heroIndex = -1;
   for (let i = 0; i < path.length; i++) {
     const point = path[i];
@@ -112,17 +112,14 @@ export function createPathPreviewFromCurrentPosition(
     }
   }
 
-  // If hero is not found in path, or at the end, return empty container
   if (heroIndex === -1 || heroIndex >= path.length - 1) {
     return container;
   }
 
-  // Create path from hero's current position
   const remainingPath = path.slice(heroIndex + 1);
   const cost = remainingPath.length;
   const endPoint = remainingPath[remainingPath.length - 1];
 
-  // If there's no remaining path, return empty container
   if (remainingPath.length === 0) {
     return container;
   }
@@ -181,7 +178,6 @@ export function createPathPreviewFromCurrentPosition(
 
   container.addChild(label);
 
-  // Add clickable X marker at the end of the path
   const xMarker = createXMarker(endPoint, tileSize, onPathConfirm);
   container.addChild(xMarker);
 
