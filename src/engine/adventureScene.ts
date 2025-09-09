@@ -166,13 +166,6 @@ function continuePathMovement(
     return;
   }
 
-  // The currentPath should already be the remaining path from the hero's current position
-  console.log(
-    "Calling moveHeroAlongPath with currentPath length:",
-    currentPath.length
-  );
-
-  // Find the hero's current position in the path to get the actual remaining path
   let heroIndex = -1;
   for (let i = 0; i < currentPath.length; i++) {
     const point = currentPath[i];
@@ -259,7 +252,6 @@ function setupClickHandling(
     if (selectedHero) {
       pathContainer.removeChildren();
 
-      // Clear any existing path when setting a new one
       clearCurrentPath();
 
       const path = findPath(selectedHero, targetX, targetY, tileSize);
@@ -273,10 +265,8 @@ function setupClickHandling(
         () => {
           console.log("Path confirmed! Moving hero to:", targetX, targetY);
 
-          // Set the current path in state
           setCurrentPath(path, { x: targetX, y: targetY });
 
-          // Start the path movement
           continuePathMovement(heroSprite, pathContainer, tileSize, {
             x: targetX,
             y: targetY,
