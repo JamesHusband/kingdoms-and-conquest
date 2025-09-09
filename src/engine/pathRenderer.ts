@@ -83,7 +83,101 @@ export function createPathPreview(
 
   // Add clickable X marker at the end of the path
   const xMarker = createXMarker(endPoint, tileSize, onPathConfirm);
-  console.log("Creating X marker at:", endPoint, "tileSize:", tileSize);
+  container.addChild(xMarker);
+
+  return container;
+}
+
+export function createPathPreviewFromCurrentPosition(
+  hero: Hero,
+  path: { x: number; y: number }[],
+  _target: { x: number; y: number },
+  tileSize: number,
+  currentMovementPoints: number = 5,
+  onPathConfirm?: () => void
+): Container {
+  const container = new Container();
+
+  if (path.length < 2) {
+    return container;
+  }
+
+  // Find the hero's current position in the path
+  let heroIndex = -1;
+  for (let i = 0; i < path.length; i++) {
+    const point = path[i];
+    if (Math.abs(point.x - hero.x) < 1 && Math.abs(point.y - hero.y) < 1) {
+      heroIndex = i;
+      break;
+    }
+  }
+
+  // If hero is not found in path, or at the end, return empty container
+  if (heroIndex === -1 || heroIndex >= path.length - 1) {
+    return container;
+  }
+
+  // Create path from hero's current position
+  const remainingPath = path.slice(heroIndex + 1);
+  const cost = remainingPath.length;
+  const endPoint = remainingPath[remainingPath.length - 1];
+
+  for (let i = 0; i < remainingPath.length; i++) {
+    const current = remainingPath[i];
+    const isAvailable = i < currentMovementPoints;
+    const color = isAvailable ? 0xffffff : 0xff0000;
+
+    let direction = { x: 0, y: 0 };
+    if (i < remainingPath.length - 1) {
+      const next = remainingPath[i + 1];
+      direction = {
+        x: next.x - current.x,
+        y: next.y - current.y,
+      };
+    } else if (i > 0) {
+      const prev = remainingPath[i - 1];
+      direction = {
+        x: current.x - prev.x,
+        y: current.y - prev.y,
+      };
+    }
+
+    const arrowGraphics = createDirectionalArrow(
+      current,
+      direction,
+      color,
+      tileSize
+    );
+    container.addChild(arrowGraphics);
+  }
+
+  const labelStyle = new TextStyle({
+    fontFamily: "Arial, sans-serif",
+    fontSize: 14,
+    fontWeight: "bold",
+    fill: cost <= currentMovementPoints ? 0x00ff00 : 0xff0000,
+    stroke: { width: 2, color: 0x000000 },
+    dropShadow: {
+      color: 0x000000,
+      blur: 2,
+      angle: Math.PI / 4,
+      distance: 1,
+    },
+  });
+
+  const label = new Text({
+    text: `${cost} MP`,
+    style: labelStyle,
+  });
+
+  label.x = endPoint.x + 15;
+  label.y = endPoint.y - 15;
+  label.anchor.set(0, 0.5);
+
+  container.addChild(label);
+
+  // Add clickable X marker at the end of the path
+  const xMarker = createXMarker(endPoint, tileSize, onPathConfirm);
   container.addChild(xMarker);
 
   return container;
@@ -146,7 +240,7 @@ function createXMarker(
 
   const markerSize = tileSize * 0.6;
   const lineWidth = 6;
-  t;
+
   graphics.beginFill(0xffffff, 0.9);
   graphics.lineStyle(3, 0x000000, 1);
   graphics.drawCircle(position.x, position.y, markerSize * 0.8);
@@ -196,8 +290,11 @@ function createXMarker(
   if (onClick) {
     graphics.on("pointerdown", (event: FederatedPointerEvent) => {
       event.stopPropagation();
+      console.log("X marker clicked!");
       onClick();
     });
+  } else {
+    console.log("X marker created without onClick callback");
   }
 
   return graphics;

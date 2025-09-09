@@ -1,7 +1,15 @@
 import { Application, Container, Graphics, Text, TextStyle } from "pixi.js";
-import { createHeroSprite, updateHeroSelection } from "@engine/heroRenderer";
-import { createPathPreview } from "@engine/pathRenderer";
+import {
+  createHeroSprite,
+  updateHeroSelection,
+  updateHeroPosition,
+} from "@engine/heroRenderer";
+import {
+  createPathPreview,
+  createPathPreviewFromCurrentPosition,
+} from "@engine/pathRenderer";
 import { useAdventure } from "@state/adventure";
+import { findPath } from "@rules/pathfinding";
 
 function gridToWorld(gridX: number, gridY: number, tileSize: number) {
   return {
@@ -74,6 +82,153 @@ function createHero(
   return heroSprite;
 }
 
+function refreshPathDisplay(
+  heroSprite: Container,
+  pathContainer: Container,
+  tileSize: number
+): void {
+  console.log("refreshPathDisplay called");
+  const { selectedHero, currentPath, currentTarget } = useAdventure.getState();
+
+  console.log(
+    "refreshPathDisplay - selectedHero:",
+    !!selectedHero,
+    "currentPath:",
+    !!currentPath,
+    "currentTarget:",
+    !!currentTarget
+  );
+
+  if (!selectedHero || !currentPath || !currentTarget) {
+    console.log("Missing data for path refresh:", {
+      selectedHero: !!selectedHero,
+      currentPath: !!currentPath,
+      currentTarget: !!currentTarget,
+    });
+    return;
+  }
+
+  console.log(
+    "Refreshing path display for hero at:",
+    selectedHero.x,
+    selectedHero.y,
+    "with",
+    selectedHero.movementPoints,
+    "movement points"
+  );
+  console.log("Current path length:", currentPath.length);
+  console.log("Current target:", currentTarget);
+
+  // Clear existing path display
+  pathContainer.removeChildren();
+
+  // Create updated path preview from current position
+  const pathSprite = createPathPreviewFromCurrentPosition(
+    selectedHero,
+    currentPath,
+    currentTarget,
+    tileSize,
+    selectedHero.movementPoints,
+    () => {
+      console.log("Path continuation callback triggered");
+      console.log(
+        "About to call continuePathMovement with currentTarget:",
+        currentTarget
+      );
+      continuePathMovement(heroSprite, pathContainer, tileSize, currentTarget);
+    }
+  );
+
+  pathContainer.addChild(pathSprite);
+}
+
+function continuePathMovement(
+  heroSprite: Container,
+  pathContainer: Container,
+  tileSize: number,
+  target: { x: number; y: number }
+): void {
+  console.log("continuePathMovement called");
+  const { selectedHero, currentPath, moveHeroAlongPath } =
+    useAdventure.getState();
+
+  console.log(
+    "continuePathMovement - selectedHero:",
+    !!selectedHero,
+    "currentPath:",
+    !!currentPath,
+    "currentPath length:",
+    currentPath?.length
+  );
+
+  if (!selectedHero || !currentPath) {
+    console.log("No selected hero or current path");
+    return;
+  }
+
+  // The currentPath should already be the remaining path from the hero's current position
+  console.log(
+    "Calling moveHeroAlongPath with currentPath length:",
+    currentPath.length
+  );
+
+  // Find the hero's current position in the path to get the actual remaining path
+  let heroIndex = -1;
+  for (let i = 0; i < currentPath.length; i++) {
+    const point = currentPath[i];
+    if (
+      Math.abs(point.x - selectedHero.x) < 1 &&
+      Math.abs(point.y - selectedHero.y) < 1
+    ) {
+      heroIndex = i;
+      break;
+    }
+  }
+
+  const remainingPath =
+    heroIndex >= 0 ? currentPath.slice(heroIndex + 1) : currentPath;
+  console.log(
+    "Hero index:",
+    heroIndex,
+    "remainingPath length:",
+    remainingPath.length
+  );
+
+  moveHeroAlongPath(remainingPath, selectedHero.movementPoints);
+
+  const { selectedHero: updatedHero, currentPath: newPath } =
+    useAdventure.getState();
+  console.log(
+    "After moveHeroAlongPath - updatedHero:",
+    !!updatedHero,
+    "newPath:",
+    !!newPath,
+    "newPath length:",
+    newPath?.length
+  );
+
+  if (!newPath) {
+    console.log("Path was cleared after movement - this might be the issue!");
+  }
+
+  if (updatedHero) {
+    updateHeroPosition(heroSprite, updatedHero);
+
+    if (newPath) {
+      pathContainer.removeChildren();
+      const pathSprite = createPathPreviewFromCurrentPosition(
+        updatedHero,
+        newPath,
+        target,
+        tileSize,
+        updatedHero.movementPoints,
+        () => continuePathMovement(heroSprite, pathContainer, tileSize, target)
+      );
+      pathContainer.addChild(pathSprite);
+    }
+  }
+}
+
 function setupClickHandling(
   root: Container,
   heroSprite: Container,
@@ -99,16 +254,15 @@ function setupClickHandling(
       return;
     }
 
-    const { selectedHero } = useAdventure.getState();
+    const { selectedHero, setCurrentPath, clearCurrentPath } =
+      useAdventure.getState();
     if (selectedHero) {
       pathContainer.removeChildren();
 
-      const heroGridX = Math.floor(selectedHero.x / tileSize);
-      const heroGridY = Math.floor(selectedHero.y / tileSize);
-      const targetGridX = Math.floor(targetX / tileSize);
-      const targetGridY = Math.floor(targetY / tileSize);
-      const deltaX = Math.abs(targetGridX - heroGridX);
-      const deltaY = Math.abs(targetGridY - heroGridY);
+      // Clear any existing path when setting a new one
+      clearCurrentPath();
+
+      const path = findPath(selectedHero, targetX, targetY, tileSize);
 
       const pathSprite = createPathPreview(
         selectedHero,
@@ -118,6 +272,15 @@ function setupClickHandling(
         selectedHero.movementPoints,
         () => {
           console.log("Path confirmed! Moving hero to:", targetX, targetY);
+
+          // Set the current path in state
+          setCurrentPath(path, { x: targetX, y: targetY });
+
+          // Start the path movement
+          continuePathMovement(heroSprite, pathContainer, tileSize, {
+            x: targetX,
+            y: targetY,
+          });
         }
       );
       pathContainer.addChild(pathSprite);
@@ -136,6 +299,7 @@ export function createAdventureScene(app: Application, opts = { tile: 32 }) {
   createGridLabels(cols, rows, opts.tile, root);
 
   const pathContainer = new Container();
+  pathContainer.interactive = true;
   root.addChild(pathContainer);
 
   const centerX = Math.floor(cols / 2);
@@ -144,6 +308,17 @@ export function createAdventureScene(app: Application, opts = { tile: 32 }) {
   root.addChild(heroSprite);
 
   setupClickHandling(root, heroSprite, pathContainer, opts.tile);
+
+  // Set up path refresh callback
+  useAdventure.setState({
+    refreshPathDisplay: (callback?: () => void) => {
+      if (callback) {
+        callback();
+      } else {
+        refreshPathDisplay(heroSprite, pathContainer, opts.tile);
+      }
+    },
+  });
 
   return { root, tileSize: opts.tile, heroSprite, pathContainer };
 }

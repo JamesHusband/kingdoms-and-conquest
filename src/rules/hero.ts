@@ -52,3 +52,39 @@ export function moveHero(
 
   return hero;
 }
+
+export function moveHeroAlongPath(
+  hero: Hero,
+  path: { x: number; y: number }[],
+  maxSteps: number
+): { newHero: Hero; actualPath: { x: number; y: number }[] } {
+  const actualPath: { x: number; y: number }[] = [];
+  let currentHero = { ...hero };
+  let stepsMoved = 0;
+
+  // Start from the hero's current position
+  actualPath.push({ x: currentHero.x, y: currentHero.y });
+
+  for (let i = 0; i < path.length && stepsMoved < maxSteps; i++) {
+    const nextPoint = path[i];
+    
+    // Calculate movement cost (1 point per step in pathfinding)
+    const movementCost = 1;
+    
+    if (currentHero.movementPoints >= movementCost) {
+      currentHero = {
+        ...currentHero,
+        x: nextPoint.x,
+        y: nextPoint.y,
+        movementPoints: currentHero.movementPoints - movementCost,
+      };
+      actualPath.push({ x: nextPoint.x, y: nextPoint.y });
+      stepsMoved++;
+    } else {
+      // Not enough movement points to continue
+      break;
+    }
+  }
+
+  return { newHero: currentHero, actualPath };
+}
