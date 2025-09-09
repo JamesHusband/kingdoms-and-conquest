@@ -10,7 +10,6 @@ import {
   switchToScene,
 } from "@engine/sceneManager";
 import { createAudioState, loadSound, playMusic } from "@engine/audio";
-import { enablePanning } from "@engine/camera";
 import { HUD } from "@ui/HUD";
 import { AdventureHUD } from "@ui/AdventureHUD";
 

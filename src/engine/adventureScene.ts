@@ -87,37 +87,20 @@ function refreshPathDisplay(
   pathContainer: Container,
   tileSize: number
 ): void {
-  console.log("refreshPathDisplay called");
   const { selectedHero, currentPath, currentTarget } = useAdventure.getState();
 
-  console.log(
-    "refreshPathDisplay - selectedHero:",
-    !!selectedHero,
-    "currentPath:",
-    !!currentPath,
-    "currentTarget:",
-    !!currentTarget
-  );
-
   if (!selectedHero || !currentPath || !currentTarget) {
-    console.log("Missing data for path refresh:", {
-      selectedHero: !!selectedHero,
-      currentPath: !!currentPath,
-      currentTarget: !!currentTarget,
-    });
+    // Clear any existing path display when there's no current path
+    pathContainer.removeChildren();
     return;
   }
 
-  console.log(
-    "Refreshing path display for hero at:",
-    selectedHero.x,
-    selectedHero.y,
-    "with",
-    selectedHero.movementPoints,
-    "movement points"
-  );
-  console.log("Current path length:", currentPath.length);
-  console.log("Current target:", currentTarget);
+  // Double-check that the path still exists (it might have been cleared between the check and now)
+  const currentState = useAdventure.getState();
+  if (!currentState.currentPath || !currentState.currentTarget) {
+    pathContainer.removeChildren();
+    return;
+  }
 
   // Clear existing path display
   pathContainer.removeChildren();
@@ -130,11 +113,6 @@ function refreshPathDisplay(
     tileSize,
     selectedHero.movementPoints,
     () => {
-      console.log("Path continuation callback triggered");
-      console.log(
-        "About to call continuePathMovement with currentTarget:",
-        currentTarget
-      );
       continuePathMovement(heroSprite, pathContainer, tileSize, currentTarget);
     }
   );
@@ -148,21 +126,10 @@ function continuePathMovement(
   tileSize: number,
   target: { x: number; y: number }
 ): void {
-  console.log("continuePathMovement called");
   const { selectedHero, currentPath, moveHeroAlongPath } =
     useAdventure.getState();
 
-  console.log(
-    "continuePathMovement - selectedHero:",
-    !!selectedHero,
-    "currentPath:",
-    !!currentPath,
-    "currentPath length:",
-    currentPath?.length
-  );
-
   if (!selectedHero || !currentPath) {
-    console.log("No selected hero or current path");
     return;
   }
 
@@ -180,32 +147,23 @@ function continuePathMovement(
 
   const remainingPath =
     heroIndex >= 0 ? currentPath.slice(heroIndex + 1) : currentPath;
-  console.log(
-    "Hero index:",
-    heroIndex,
-    "remainingPath length:",
-    remainingPath.length
-  );
 
   moveHeroAlongPath(remainingPath, selectedHero.movementPoints);
 
   const { selectedHero: updatedHero, currentPath: newPath } =
     useAdventure.getState();
-  console.log(
-    "After moveHeroAlongPath - updatedHero:",
-    !!updatedHero,
-    "newPath:",
-    !!newPath,
-    "newPath length:",
-    newPath?.length
-  );
-
-  if (!newPath) {
-    console.log("Path was cleared after movement - this might be the issue!");
-  }
 
   if (updatedHero) {
+    console.log(
+      "About to update hero position from",
+      selectedHero.x,
+      selectedHero.y,
+      "to",
+      updatedHero.x,
+      updatedHero.y
+    );
     updateHeroPosition(heroSprite, updatedHero);
+    console.log("Hero position updated, checking if path needs updating");
 
     if (newPath) {
       pathContainer.removeChildren();
@@ -218,7 +176,15 @@ function continuePathMovement(
         () => continuePathMovement(heroSprite, pathContainer, tileSize, target)
       );
       pathContainer.addChild(pathSprite);
+    } else {
+      // Path completed - clear the path display and don't create any new path preview
+      pathContainer.removeChildren();
+      console.log("Path completed, hero should be at final destination");
+      console.log("Final hero position:", updatedHero.x, updatedHero.y);
+      return; // Exit early to prevent any further processing
     }
+  } else {
+    console.log("No updatedHero found");
   }
 }
 
@@ -263,8 +229,6 @@ function setupClickHandling(
         tileSize,
         selectedHero.movementPoints,
         () => {
-          console.log("Path confirmed! Moving hero to:", targetX, targetY);
-
           setCurrentPath(path, { x: targetX, y: targetY });
 
           continuePathMovement(heroSprite, pathContainer, tileSize, {

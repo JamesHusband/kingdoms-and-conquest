@@ -32,9 +32,22 @@ export function createHeroSprite(hero: Hero, tileSize: number): Container {
 }
 
 export function updateHeroPosition(heroSprite: Container, hero: Hero): void {
+  console.log("updateHeroPosition: setting hero sprite to", hero.x, hero.y);
+  console.log("Hero sprite before update:", heroSprite.x, heroSprite.y);
+  console.log("Hero sprite ID:", heroSprite.name || "unnamed");
+
   heroSprite.x = hero.x;
   heroSprite.y = hero.y;
   (heroSprite as HeroContainer).heroData = hero;
+
+  console.log(
+    "updateHeroPosition: hero sprite is now at",
+    heroSprite.x,
+    heroSprite.y
+  );
+
+  // Force a visual update
+  heroSprite.visible = true;
 }
 
 export function updateHeroSelection(

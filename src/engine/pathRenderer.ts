@@ -122,6 +122,11 @@ export function createPathPreviewFromCurrentPosition(
   const cost = remainingPath.length;
   const endPoint = remainingPath[remainingPath.length - 1];
 
+  // If there's no remaining path, return empty container
+  if (remainingPath.length === 0) {
+    return container;
+  }
+
   for (let i = 0; i < remainingPath.length; i++) {
     const current = remainingPath[i];
     const isAvailable = i < currentMovementPoints;
@@ -290,11 +295,9 @@ function createXMarker(
   if (onClick) {
     graphics.on("pointerdown", (event: FederatedPointerEvent) => {
       event.stopPropagation();
-      console.log("X marker clicked!");
       onClick();
     });
   } else {
-    console.log("X marker created without onClick callback");
   }
 
   return graphics;

@@ -45,7 +45,12 @@ export const useAdventure = create<AdventureState>((set, get) => ({
       // Call the refresh function to update the path display
       setTimeout(() => {
         const currentState = get();
-        if (currentState.refreshPathDisplay) {
+        // Only refresh if the path still exists (hasn't been completed)
+        if (
+          currentState.refreshPathDisplay &&
+          currentState.currentPath &&
+          currentState.currentTarget
+        ) {
           currentState.refreshPathDisplay();
         }
       }, 0);
@@ -58,20 +63,6 @@ export const useAdventure = create<AdventureState>((set, get) => ({
 
   moveHeroAlongPath: (path: { x: number; y: number }[], maxSteps: number) => {
     const state = get();
-    console.log(
-      "moveHeroAlongPath called with path length:",
-      path.length,
-      "maxSteps:",
-      maxSteps
-    );
-    console.log(
-      "Current state - selectedHero:",
-      !!state.selectedHero,
-      "currentPath:",
-      !!state.currentPath,
-      "currentTarget:",
-      !!state.currentTarget
-    );
 
     if (state.selectedHero) {
       // Consider the provided path to be the remaining path from the hero's current position
@@ -79,15 +70,9 @@ export const useAdventure = create<AdventureState>((set, get) => ({
 
       if (remainingPath.length === 0) {
         // Already at the end
-        console.log("No remaining path, clearing current path");
         set({ currentPath: null, currentTarget: null });
         return;
       }
-
-      console.log(
-        "Moving along remaining path of length:",
-        remainingPath.length
-      );
 
       const { newHero, actualPath } = moveHeroAlongPath(
         state.selectedHero,
@@ -102,28 +87,27 @@ export const useAdventure = create<AdventureState>((set, get) => ({
       const newRemainingPath = remainingPath.slice(stepsConsumed);
 
       const reachedEnd = newRemainingPath.length === 0;
+      const hasNoMovementPoints = newHero.movementPoints === 0;
+      const shouldClearPath = reachedEnd && hasNoMovementPoints;
+
+      console.log(
+        "Setting hero position to:",
+        newHero.x,
+        newHero.y,
+        "reachedEnd:",
+        reachedEnd,
+        "hasNoMovementPoints:",
+        hasNoMovementPoints,
+        "shouldClearPath:",
+        shouldClearPath
+      );
 
       set({
         hero: newHero,
         selectedHero: newHero,
-        currentPath: reachedEnd ? null : state.currentPath, // Keep the full path
-        currentTarget: reachedEnd ? null : state.currentTarget,
+        currentPath: shouldClearPath ? null : state.currentPath, // Only clear path when hero reaches end AND has no movement points
+        currentTarget: shouldClearPath ? null : state.currentTarget,
       });
-
-      console.log(
-        "After movement - reachedEnd:",
-        reachedEnd,
-        "newRemainingPath length:",
-        newRemainingPath.length
-      );
-      console.log(
-        "Setting currentPath to:",
-        newRemainingPath.length > 0
-          ? `${newRemainingPath.length} steps`
-          : "null"
-      );
-
-      console.log("Hero moved along path:", actualPath);
     }
   },
 
@@ -149,6 +133,5 @@ export const useAdventure = create<AdventureState>((set, get) => ({
     if (callback) {
       callback();
     }
-    console.log("Path display refresh requested");
   },
 }));
