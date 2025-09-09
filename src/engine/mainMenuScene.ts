@@ -3,17 +3,12 @@ import { Application, Container, Text, TextStyle } from "pixi.js";
 export function createMainMenuScene(app: Application, onNewGame?: () => void) {
   const scene = new Container();
 
-  // Background image is handled by CSS in App.tsx - no need for PIXI background
-
-  // Game title
   const titleStyle = new TextStyle({
     fontFamily: "Arial, sans-serif",
     fontSize: 42,
     fill: 0xffffff,
     stroke: 0x4a4a4a,
     dropShadow: true,
-    dropShadowColor: 0x000000,
-    dropShadowBlur: 4,
   });
 
   const title = new Text({
@@ -25,7 +20,6 @@ export function createMainMenuScene(app: Application, onNewGame?: () => void) {
   title.y = 120;
   scene.addChild(title);
 
-  // Menu buttons
   const buttonStyle = new TextStyle({
     fontFamily: "Arial, sans-serif",
     fontSize: 24,
@@ -58,7 +52,6 @@ export function createMainMenuScene(app: Application, onNewGame?: () => void) {
     button.interactive = true;
     button.cursor = "pointer";
 
-    // Hover effects
     button.on("pointerover", () => {
       button.style = buttonHoverStyle;
     });
@@ -66,21 +59,20 @@ export function createMainMenuScene(app: Application, onNewGame?: () => void) {
       button.style = buttonStyle;
     });
 
-    // Click handlers
     button.on("pointerdown", () => {
       switch (index) {
-        case 0: // New Game
+        case 0:
           if (onNewGame) {
             onNewGame();
           }
           break;
-        case 1: // Load Game
+        case 1:
           console.log("Load Game clicked");
           break;
-        case 2: // Options
+        case 2:
           console.log("Options clicked");
           break;
-        case 3: // Exit
+        case 3:
           window.close();
           break;
       }
@@ -89,7 +81,6 @@ export function createMainMenuScene(app: Application, onNewGame?: () => void) {
     scene.addChild(button);
   });
 
-  // Version info
   const versionStyle = new TextStyle({
     fontFamily: "Arial, sans-serif",
     fontSize: 12,
